@@ -206,4 +206,573 @@ async function login(){
 async function register(){
  hideMessage();
  const full_name=document.getElementById("fullName").value.trim();
- const email=document.get
+ const email=document.getElementById("email").value.trim();
+ const password=document.getElementById("password").value;
+
+ if(!full_name||!email||!password){
+  message("Enter your full name, email and password.");return;
+ }
+
+ if(password.length<6){
+  message("Your password must contain at least 6 characters.");return;
+ }
+
+ const {data,error}=await db.auth.signUp({
+  email,
+  password,
+  options:{data:{full_name}}
+ });
+
+ if(error){message(error.message);return;}
+
+ if(data.session){
+  await loadDashboard();
+ }else{
+  message("Registration received. Check your email to confirm your account, then log in.");
+ }
+}
+
+async function logout(){
+ if(examTimer)clearInterval(examTimer);
+ await db.auth.signOut();
+ currentUser=null;
+ studentProfile=null;
+ document.getElementById("dashboard").classList.add("hidden");
+ document.getElementById("authSection").classList.remove("hidden");
+ message("You have logged out.");
+}
+
+async function loadDashboard(){
+ hideMessage();
+
+ const {data:{user},error}=await db.auth.getUser();
+
+ if(error||!user){
+  message("Please log in again.");return;
+ }
+
+ currentUser=user;
+
+ const {data:profile,error:profileError}=await db
+  .from("students")
+  .select("*")
+  .eq("user_id",user.id)
+  .maybeSingle();
+
+ if(profileError){
+  message("Could not load student profile: "+profileError.message);return;
+ }
+
+ if(!profile){
+  message("Your student profile was not found. Please contact the administrator.");
+  return;
+ }
+
+ studentProfile=profile;
+
+ const {data:roleData,error:roleError}=await db
+  .from("user_roles")
+  .select("role")
+  .eq("user_id",user.id)
+  .maybeSingle();
+
+ if(roleError){
+  message("Could not check your account role: "+roleError.message);return;
+ }
+
+ currentRole=roleData?.role||"student";
+
+ document.getElementById("authSection").classList.add("hidden");
+ document.getElementById("dashboard").classList.remove("hidden");
+ document.getElementById("welcome").textContent=
+  "Welcome, "+(profile.full_name||user.email);
+ document.getElementById("accountRole").textContent=
+  "Account type: "+currentRole;
+
+ if(currentRole==="admin"){
+  document.getElementById("adminArea").classList.remove("hidden");
+  document.getElementById("studentArea").classList.add("hidden");
+  showAdminPage("overview");
+  await loadOverview();
+ }else{
+  document.getElementById("studentArea").classList.remove("hidden");
+  document.getElementById("adminArea").classList.add("hidden");
+  await loadPublishedSubjects();
+  await loadMyResults();
+ }
+}
+
+function makeTable(headers,rows){
+ const table=document.createElement("table");
+ const thead=document.createElement("thead");
+ const tr=document.createElement("tr");
+
+ headers.forEach(h=>{
+  const th=document.createElement("th");
+  th.textContent=h;
+  tr.appendChild(th);
+ });
+
+ thead.appendChild(tr);
+ table.appendChild(thead);
+
+ const tbody=document.createElement("tbody");
+
+ rows.forEach(row=>{
+  const tr=document.createElement("tr");
+  row.forEach(value=>{
+   const td=document.createElement("td");
+
+   if(value instanceof Node){
+    td.appendChild(value);
+   }else{
+    td.textContent=value==null?"":String(value);
+   }
+
+   tr.appendChild(td);
+  });
+  tbody.appendChild(tr);
+ });
+
+ table.appendChild(tbody);
+ return table;
+}
+
+function showAdminPage(page){
+ document.querySelectorAll(".adminPage").forEach(el=>el.classList.add("hidden"));
+ document.getElementById("admin-"+page).classList.remove("hidden");
+
+ if(page==="overview")loadOverview();
+ if(page==="subjects")loadAdminSubjects();
+ if(page==="questions")loadQuestionSubjects();
+ if(page==="students")loadStudents();
+ if(page==="results")loadAllResults();
+}
+
+async function loadOverview(){
+ const tables=["students","subjects","questions","exam_results"];
+ const ids=["studentCount","subjectCount","questionCount","resultCount"];
+
+ for(let i=0;i<tables.length;i++){
+  const {count,error}=await db.from(tables[i]).select("*",{count:"exact",head:true});
+  document.getElementById(ids[i]).textContent=error?"—":count;
+ }
+}
+
+async function addSubject(){
+ const name=document.getElementById("subjectName").value.trim();
+ const description=document.getElementById("subjectDescription").value.trim();
+ const duration=Number(document.getElementById("subjectDuration").value);
+
+ if(!name||!Number.isInteger(duration)||duration<1){
+  message("Enter a subject name and a valid duration.");return;
+ }
+
+ const {error}=await db.from("subjects").insert({
+  name,
+  description,
+  duration_minutes:duration,
+  is_published:false
+ });
+
+ if(error){message("Could not add subject: "+error.message);return;}
+
+ document.getElementById("subjectName").value="";
+ document.getElementById("subjectDescription").value="";
+ message("Subject added. Publish it when its questions are ready.");
+ await loadAdminSubjects();
+ await loadOverview();
+}
+
+async function loadAdminSubjects(){
+ const box=document.getElementById("subjectsList");
+ box.textContent="Loading subjects...";
+
+ const {data,error}=await db.from("subjects")
+  .select("*").order("created_at",{ascending:false});
+
+ if(error){box.textContent=error.message;return;}
+
+ box.replaceChildren();
+
+ if(!data.length){box.textContent="No subjects added yet.";return;}
+
+ data.forEach(s=>{
+  const div=document.createElement("div");
+  div.className="question";
+
+  const title=document.createElement("h3");
+  title.textContent=s.name;
+  div.appendChild(title);
+
+  const info=document.createElement("p");
+  info.textContent=(s.description||"No description")+" | "+s.duration_minutes+
+   " minutes | "+(s.is_published?"Published":"Not published");
+  div.appendChild(info);
+
+  const toggle=document.createElement("button");
+  toggle.textContent=s.is_published?"Unpublish":"Publish";
+  toggle.onclick=()=>toggleSubject(s.id,!s.is_published);
+  div.appendChild(toggle);
+
+  const del=document.createElement("button");
+  del.textContent="Delete Subject";
+  del.className="danger";
+  del.onclick=()=>deleteSubject(s.id);
+  div.appendChild(del);
+
+  box.appendChild(div);
+ });
+}
+
+async function toggleSubject(id,published){
+ const {error}=await db.from("subjects").update({is_published:published}).eq("id",id);
+ if(error){message(error.message);return;}
+ await loadAdminSubjects();
+ await loadOverview();
+}
+
+async function deleteSubject(id){
+ if(!confirm("Delete this subject and its questions?"))return;
+ const {error}=await db.from("subjects").delete().eq("id",id);
+ if(error){message(error.message);return;}
+ message("Subject deleted.");
+ await loadAdminSubjects();
+ await loadOverview();
+}
+
+async function loadQuestionSubjects(){
+ const select=document.getElementById("questionSubject");
+ select.replaceChildren();
+
+ const {data,error}=await db.from("subjects").select("id,name").order("name");
+
+ if(error){message(error.message);return;}
+
+ data.forEach(s=>{
+  const option=document.createElement("option");
+  option.value=s.id;
+  option.textContent=s.name;
+  select.appendChild(option);
+ });
+
+ await loadAdminQuestions();
+}
+
+async function addQuestion(){
+ const subject_id=document.getElementById("questionSubject").value;
+ const question_text=document.getElementById("questionText").value.trim();
+ const option_a=document.getElementById("optionA").value.trim();
+ const option_b=document.getElementById("optionB").value.trim();
+ const option_c=document.getElementById("optionC").value.trim();
+ const option_d=document.getElementById("optionD").value.trim();
+ const correct_option=document.getElementById("correctOption").value;
+
+ if(!subject_id||!question_text||!option_a||!option_b||!option_c||!option_d){
+  message("Complete the question and all four options.");return;
+ }
+
+ const {data,error}=await db.from("questions").insert({
+  subject_id,question_text,option_a,option_b,option_c,option_d
+ }).select("id").single();
+
+ if(error){message("Could not save question: "+error.message);return;}
+
+ const {error:answerError}=await db.from("question_answers").insert({
+  question_id:data.id,
+  correct_option
+ });
+
+ if(answerError){
+  await db.from("questions").delete().eq("id",data.id);
+  message("Could not save correct answer: "+answerError.message);return;
+ }
+
+ document.getElementById("questionText").value="";
+ document.getElementById("optionA").value="";
+ document.getElementById("optionB").value="";
+ document.getElementById("optionC").value="";
+ document.getElementById("optionD").value="";
+
+ message("Question saved successfully.");
+ await loadAdminQuestions();
+ await loadOverview();
+}
+
+async function loadAdminQuestions(){
+ const box=document.getElementById("questionsList");
+ const subject_id=document.getElementById("questionSubject").value;
+ box.textContent="";
+
+ if(!subject_id)return;
+
+ const {data,error}=await db.from("questions")
+  .select("*").eq("subject_id",subject_id).order("created_at");
+
+ if(error){box.textContent=error.message;return;}
+
+ if(!data.length){box.textContent="No questions for this subject yet.";return;}
+
+ data.forEach((q,index)=>{
+  const div=document.createElement("div");
+  div.className="question";
+
+  const title=document.createElement("p");
+  title.textContent=(index+1)+". "+q.question_text;
+  div.appendChild(title);
+
+  const options=document.createElement("p");
+  options.textContent="A: "+q.option_a+" | B: "+q.option_b+
+   " | C: "+q.option_c+" | D: "+q.option_d;
+  div.appendChild(options);
+
+  const del=document.createElement("button");
+  del.textContent="Delete Question";
+  del.className="danger";
+  del.onclick=async()=>{
+   if(!confirm("Delete this question?"))return;
+   const {error}=await db.from("questions").delete().eq("id",q.id);
+   if(error){message(error.message);return;}
+   await loadAdminQuestions();
+   await loadOverview();
+  };
+
+  div.appendChild(del);
+  box.appendChild(div);
+ });
+}
+
+async function loadStudents(){
+ const box=document.getElementById("studentsList");
+ box.textContent="Loading students...";
+
+ const {data,error}=await db.from("students")
+  .select("id,full_name,email,created_at")
+  .order("created_at",{ascending:false});
+
+ if(error){box.textContent=error.message;return;}
+
+ box.replaceChildren();
+ box.appendChild(makeTable(
+  ["Full Name","Email","Registered"],
+  data.map(s=>[
+   s.full_name,
+   s.email,
+   s.created_at?new Date(s.created_at).toLocaleDateString():""
+  ])
+ ));
+}
+
+async function loadAllResults(){
+ const box=document.getElementById("allResultsList");
+ box.textContent="Loading results...";
+
+ const {data,error}=await db.from("exam_results")
+  .select("student_id,subject,score,total_questions,created_at")
+  .order("created_at",{ascending:false});
+
+ if(error){box.textContent=error.message;return;}
+
+ box.replaceChildren();
+ box.appendChild(makeTable(
+  ["Student ID","Subject","Score","Total Questions","Date"],
+  data.map(r=>[
+   r.student_id,r.subject,r.score,r.total_questions,
+   r.created_at?new Date(r.created_at).toLocaleString():""
+  ])
+ ));
+}
+
+async function loadPublishedSubjects(){
+ const box=document.getElementById("availableSubjects");
+ box.textContent="Loading examinations...";
+
+ const {data,error}=await db.from("subjects")
+  .select("*").eq("is_published",true).order("name");
+
+ if(error){box.textContent=error.message;return;}
+
+ box.replaceChildren();
+
+ if(!data.length){
+  box.textContent="No examinations are published yet. Please check again later.";
+  return;
+ }
+
+ data.forEach(s=>{
+  const div=document.createElement("div");
+  div.className="question";
+
+  const title=document.createElement("h3");
+  title.textContent=s.name;
+  div.appendChild(title);
+
+  const description=document.createElement("p");
+  description.textContent=(s.description||"")+
+   " | Duration: "+s.duration_minutes+" minutes";
+  div.appendChild(description);
+
+  const button=document.createElement("button");
+  button.textContent="Start Examination";
+  button.onclick=()=>startExam(s);
+  div.appendChild(button);
+
+  box.appendChild(div);
+ });
+}
+
+async function startExam(subject){
+ if(examTimer)clearInterval(examTimer);
+ activeSubject=subject;
+ examSubmitting=false;
+
+ const {data:questions,error}=await db.from("questions")
+  .select("id,question_text,option_a,option_b,option_c,option_d")
+  .eq("subject_id",subject.id).order("created_at");
+
+ if(error){message(error.message);return;}
+
+ if(!questions.length){
+  message("This examination has no questions yet.");return;
+ }
+
+ document.getElementById("examTitle").textContent=subject.name;
+ const box=document.getElementById("examQuestions");
+ box.replaceChildren();
+
+ questions.forEach((q,index)=>{
+  const div=document.createElement("div");
+  div.className="question";
+
+  const title=document.createElement("h3");
+  title.textContent=(index+1)+". "+q.question_text;
+  div.appendChild(title);
+
+  [["a",q.option_a],["b",q.option_b],["c",q.option_c],["d",q.option_d]]
+  .forEach(([letter,label])=>{
+   const lab=document.createElement("label");
+   lab.className="option";
+
+   const radio=document.createElement("input");
+   radio.type="radio";
+   radio.name="answer_"+q.id;
+   radio.value=letter;
+   radio.style.width="auto";
+
+   lab.appendChild(radio);
+   lab.appendChild(document.createTextNode(" "+letter.toUpperCase()+". "+label));
+   div.appendChild(lab);
+  });
+
+  box.appendChild(div);
+ });
+
+ document.getElementById("examArea").classList.remove("hidden");
+ document.getElementById("examArea").scrollIntoView({behavior:"smooth"});
+
+ secondsRemaining=Math.max(1,Number(subject.duration_minutes)||30)*60;
+ updateTimer();
+
+ examTimer=setInterval(()=>{
+  secondsRemaining--;
+  updateTimer();
+
+  if(secondsRemaining<=0){
+   clearInterval(examTimer);
+   submitExam(true);
+  }
+ },1000);
+}
+
+function updateTimer(){
+ const min=Math.floor(secondsRemaining/60);
+ const sec=secondsRemaining%60;
+ document.getElementById("timer").textContent=
+  String(min).padStart(2,"0")+":"+String(sec).padStart(2,"0");
+}
+
+async function submitExam(timeExpired){
+ if(examSubmitting||!activeSubject)return;
+
+ if(!timeExpired&&!confirm("Are you sure you want to submit your answers?"))return;
+
+ examSubmitting=true;
+ if(examTimer)clearInterval(examTimer);
+
+ const answers={};
+
+ document.querySelectorAll("#examQuestions .question").forEach(div=>{
+  const checked=div.querySelector("input[type=radio]:checked");
+  if(checked){
+   answers[checked.name.replace("answer_","")]=checked.value;
+  }
+ });
+
+ const {data,error}=await db.rpc("submit_exam",{
+  p_subject_id:activeSubject.id,
+  p_answers:answers
+ });
+
+ document.getElementById("examArea").classList.add("hidden");
+
+ if(error){
+  message("Could not submit your examination: "+error.message);
+  examSubmitting=false;
+  return;
+ }
+
+ const result=Array.isArray(data)?data[0]:data;
+
+ message(
+  (timeExpired?"Time is up! ":"")+
+  "Examination submitted. Your score is "+
+  result.score+" out of "+result.total_questions+"."
+ );
+
+ activeSubject=null;
+ examSubmitting=false;
+ await loadMyResults();
+ await loadPublishedSubjects();
+}
+
+async function loadMyResults(){
+ const box=document.getElementById("myResults");
+ if(!studentProfile)return;
+
+ const {data,error}=await db.from("exam_results")
+  .select("subject,score,total_questions,created_at")
+  .eq("student_id",studentProfile.id)
+  .order("created_at",{ascending:false});
+
+ if(error){box.textContent=error.message;return;}
+
+ box.replaceChildren();
+
+ if(!data.length){
+  box.textContent="You have not taken an examination yet.";
+  return;
+ }
+
+ box.appendChild(makeTable(
+  ["Subject","Score","Total Questions","Date"],
+  data.map(r=>[
+   r.subject,r.score,r.total_questions,
+   r.created_at?new Date(r.created_at).toLocaleString():""
+  ])
+ ));
+}
+
+db.auth.onAuthStateChange((event,session)=>{
+ if(event==="SIGNED_OUT"){
+  document.getElementById("dashboard").classList.add("hidden");
+  document.getElementById("authSection").classList.remove("hidden");
+ }
+});
+
+(async()=>{
+ const {data:{session}}=await db.auth.getSession();
+ if(session)await loadDashboard();
+})();
+</script>
+</body>
+</html>
