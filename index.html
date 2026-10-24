@@ -139,14 +139,296 @@ document.getElementById("quiz").addEventListener("submit", function(event) {
   event.preventDefault();
   submitExam();
 });
-</script>
-const SUPABASE_URL = "https://eumsvdwgptxjygmmcggt.supabase.co";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>School Examination</title>
 
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_X5v3rpQ_zKJ1LWHUxZ3jGg_4cw4OMTQ";
+  <!-- Supabase library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-const examDatabase = window.supabase.createClient(
-SUPABASE_URL,
-SUPABASE_PUBLISHABLE_KEY
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .box {
+      max-width: 500px;
+      margin: 30px auto;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px #ccc;
+    }
+
+    h1, h2 {
+      text-align: center;
+      color: #14532d;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 12px;
+      background: #15803d;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #166534;
+    }
+
+    .question {
+      margin: 20px 0;
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 6px;
+    }
+
+    #timer {
+      text-align: center;
+      font-size: 24px;
+      color: #dc2626;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- LOGIN SECTION -->
+  <div class="box" id="login">
+    <h1>School Examination</h1>
+    <p>Enter your details to start.</p>
+
+    <label for="username">Student Username</label>
+    <input type="text" id="username" placeholder="Enter username">
+
+    <label for="password">Password</label>
+    <input type="password" id="password" placeholder="Enter password">
+
+    <button type="button" onclick="startExam()">
+      Start Examination
+    </button>
+  </div>
+
+  <!-- EXAM SECTION -->
+  <div class="box" id="exam" hidden>
+    <h2>Online Examination</h2>
+
+    <p>Student: <strong id="student"></strong></p>
+    <p id="timer">05:00</p>
+
+    <form id="quiz">
+
+      <div class="question">
+        <p>1. What is 2 + 2?</p>
+
+        <label>
+          <input type="radio" name="q1" value="a">
+          3
+        </label><br>
+
+        <label>
+          <input type="radio" name="q1" value="b">
+          4
+        </label><br>
+
+        <label>
+          <input type="radio" name="q1" value="c">
+          5
+        </label>
+      </div>
+
+      <div class="question">
+        <p>2. Which planet is known as the Red Planet?</p>
+
+        <label>
+          <input type="radio" name="q2" value="a">
+          Earth
+        </label><br>
+
+        <label>
+          <input type="radio" name="q2" value="b">
+          Jupiter
+        </label><br>
+
+        <label>
+          <input type="radio" name="q2" value="c">
+          Mars
+        </label>
+      </div>
+
+      <div class="question">
+        <p>3. Which language is used to structure web pages?</p>
+
+        <label>
+          <input type="radio" name="q3" value="a">
+          HTML
+        </label><br>
+
+        <label>
+          <input type="radio" name="q3" value="b">
+          SQL
+        </label><br>
+
+        <label>
+          <input type="radio" name="q3" value="c">
+          Python
+        </label>
+      </div>
+
+      <button type="submit">Submit Examination</button>
+    </form>
+  </div>
+
+  <!-- RESULT SECTION -->
+  <div class="box" id="result" hidden>
+    <h2>Examination Result</h2>
+    <p id="score"></p>
+
+    <button type="button" onclick="restartExam()">
+      Return to Login
+    </button>
+  </div>
+
+  <!-- JAVASCRIPT -->
+  <script>
+    // Supabase connection
+    const SUPABASE_URL =
+      "https://eumsvdwgptxjygmmcggt.supabase.co";
+
+    const SUPABASE_PUBLISHABLE_KEY =
+      "PASTE_YOUR_EXISTING_PUBLISHABLE_KEY_HERE";
+
+    const examDatabase = window.supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
+
+    // Exam settings
+    let seconds = 300;
+    let countdown = null;
+    let submitted = false;
+
+    function startExam() {
+      const username =
+        document.getElementById("username").value.trim();
+
+      const password =
+        document.getElementById("password").value;
+
+      if (!username || !password) {
+        alert("Please enter a username and password.");
+        return;
+      }
+
+      // Demonstration login only; no password is verified.
+      document.getElementById("student").textContent = username;
+
+      document.getElementById("login").hidden = true;
+      document.getElementById("exam").hidden = false;
+
+      seconds = 300;
+      submitted = false;
+
+      document.getElementById("timer").textContent = "05:00";
+
+      clearInterval(countdown);
+
+      countdown = setInterval(function() {
+        seconds--;
+
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+
+        document.getElementById("timer").textContent =
+          String(mins).padStart(2, "0") + ":" +
+          String(secs).padStart(2, "0");
+
+        if (seconds <= 0) {
+          submitExam();
+        }
+      }, 1000);
+    }
+
+    function submitExam() {
+      if (submitted ||
+          document.getElementById("exam").hidden) {
+        return;
+      }
+
+      submitted = true;
+      clearInterval(countdown);
+
+      const answers = {
+        q1: "b",
+        q2: "c",
+        q3: "a"
+      };
+
+      let score = 0;
+
+      for (const question in answers) {
+        const selected = document.querySelector(
+          'input[name="' + question + '"]:checked'
+        );
+
+        if (selected && selected.value === answers[question]) {
+          score++;
+        }
+      }
+
+      document.getElementById("exam").hidden = true;
+      document.getElementById("result").hidden = false;
+
+      document.getElementById("score").textContent =
+        document.getElementById("student").textContent +
+        ", your score is " + score + " out of 3.";
+    }
+
+    document.getElementById("quiz").addEventListener(
+      "submit",
+      function(event) {
+        event.preventDefault();
+        submitExam();
+      }
+    );
+
+    function restartExam() {
+      clearInterval(countdown);
+
+      seconds = 300;
+      submitted = false;
+
+      document.getElementById("quiz").reset();
+      document.getElementById("username").value = "";
+      document.getElementById("password").value = "";
+
+      document.getElementById("timer").textContent = "05:00";
+
+      document.getElementById("result").hidden = true;
+      document.getElementById("exam").hidden = true;
+      document.getElementById("login").hidden = false;
+   
+
 );
 </script>
 </body>
