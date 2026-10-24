@@ -140,6 +140,14 @@ document.getElementById("quiz").addEventListener("submit", function(event) {
   submitExam();
 });
 </script>
+const SUPABASE_URL = "https://eumsvdwgptxjygmmcggt.supabase.co";
+
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_X5v3rpQ_zKJ1LWHUxZ3jGg_4cw4OMTQ";
+
+const examDatabase = window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_PUBLISHABLE_KEY
+);
 </script>
 </body>
 </html>
