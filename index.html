@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>School Examination</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #eef3f8;
+  margin: 0;
+  padding: 20px;
+}
+.box {
+  max-width: 500px;
+  margin: 20px auto;
+  padding: 22px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 3px 12px #ccc;
+}
+h1, h2 { color: #087443; }
+input, button {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0;
+}
+button {
+  background: #087443;
+  color: white;
+  border: 0;
+  border-radius: 6px;
+  font-size: 16px;
+}
+.question {
+  border-bottom: 1px solid #ddd;
+  padding: 12px 0;
+}
+label { display: block; padding: 6px 0; }
+#timer { font-weight: bold; color: #b00020; }
+</style>
+</head>
+<body>
+
+<div class="box" id="login">
+  <h1>🎓 School Examination</h1>
+  <p>Demonstration login — enter any username and password.</p>
+  <input id="username" placeholder="Student username">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="startExam()">Start Examination</button>
+</div>
+
+<div class="box" id="exam" hidden>
+  <h2>Examination</h2>
+  <p>Student: <span id="student"></span></p>
+  <p>Time remaining: <span id="timer">05:00</span></p>
+  <form id="quiz">
+    <div class="question">
+      <p>1. What is 2 + 3?</p>
+      <label><input type="radio" name="q1" value="a"> 4</label>
+      <label><input type="radio" name="q1" value="b"> 5</label>
+      <label><input type="radio" name="q1" value="c"> 6</label>
+    </div>
+    <div class="question">
+      <p>2. Which planet do we live on?</p>
+      <label><input type="radio" name="q2" value="a"> Mars</label>
+      <label><input type="radio" name="q2" value="b"> Venus</label>
+      <label><input type="radio" name="q2" value="c"> Earth</label>
+    </div>
+    <div class="question">
+      <p>3. Which language structures a web page?</p>
+      <label><input type="radio" name="q3" value="a"> HTML</label>
+      <label><input type="radio" name="q3" value="b"> SQL</label>
+      <label><input type="radio" name="q3" value="c"> Python</label>
+    </div>
+    <button type="submit">Submit Answers</button>
+  </form>
+</div>
+
+<div class="box" id="result" hidden>
+  <h2>Examination Result</h2>
+  <p id="score"></p>
+  <button onclick="location.reload()">Try Demo Again</button>
+</div>
+
+<script>
+let seconds = 300;
+let countdown;
+
+function startExam() {
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value;
+
+  if (!username || !password) {
+    alert("Please enter a username and password.");
+    return;
+  }
+
+  document.getElementById("student").textContent = username;
+  document.getElementById("login").hidden = true;
+  document.getElementById("exam").hidden = false;
+
+  countdown = setInterval(() => {
+    seconds--;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    document.getElementById("timer").textContent =
+      String(mins).padStart(2, "0") + ":" +
+      String(secs).padStart(2, "0");
+
+    if (seconds <= 0) submitExam();
+  }, 1000);
+}
+
+function submitExam() {
+  if (document.getElementById("exam").hidden) return;
+  clearInterval(countdown);
+
+  const answers = { q1: "b", q2: "c", q3: "a" };
+  let score = 0;
+
+  for (const question in answers) {
+    const selected = document.querySelector(
+      'input[name="' + question + '"]:checked'
+    );
+    if (selected && selected.value === answers[question]) score++;
+  }
+
+  document.getElementById("exam").hidden = true;
+  document.getElementById("result").hidden = false;
+  document.getElementById("score").textContent =
+    document.getElementById("student").textContent +
+    ", your score is " + score + " out of 3.";
+}
+
+document.getElementById("quiz").addEventListener("submit", function(event) {
+  event.preventDefault();
+  submitExam();
+});
+</script>
+
+</body>
+</html>
