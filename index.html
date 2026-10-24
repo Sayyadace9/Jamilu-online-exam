@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>School Examination</title>
+
+  <title>School Examination System</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -12,7 +13,7 @@
       font-family: Arial, sans-serif;
       background: #eef3f8;
       margin: 0;
-      padding: 20px;
+      padding: 15px;
     }
 
     .box {
@@ -44,6 +45,10 @@
       cursor: pointer;
     }
 
+    button.secondary {
+      background: #555;
+    }
+
     .question {
       border-bottom: 1px solid #ddd;
       padding: 12px 0;
@@ -58,65 +63,227 @@
       font-weight: bold;
       color: #b00020;
     }
+
+    .message {
+      padding: 10px;
+      background: #eef3f8;
+      border-radius: 6px;
+      overflow-wrap: anywhere;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
   </style>
 </head>
 
 <body>
 
-  <div class="box" id="login">
+  <!-- REGISTRATION AND LOGIN -->
+  <div class="box" id="accountBox">
+
     <h1>🎓 School Examination</h1>
-    <p>Demonstration login — enter any username and password.</p>
 
-    <input id="username" placeholder="Student username">
-    <input id="password" type="password" placeholder="Password">
+    <div id="accountForms">
 
-    <button type="button" onclick="startExam()">
-      Start Examination
-    </button>
+      <h2 id="accountTitle">Student Registration</h2>
+
+      <form id="registerForm">
+
+        <input
+          id="fullName"
+          type="text"
+          placeholder="Full name"
+          autocomplete="name"
+          required
+        >
+
+        <input
+          id="registerEmail"
+          type="email"
+          placeholder="Email address"
+          autocomplete="email"
+          required
+        >
+
+        <input
+          id="registerPassword"
+          type="password"
+          placeholder="Create password (at least 6 characters)"
+          minlength="6"
+          autocomplete="new-password"
+          required
+        >
+
+        <button type="submit">Register</button>
+
+      </form>
+
+      <form id="loginForm" hidden>
+
+        <input
+          id="loginEmail"
+          type="email"
+          placeholder="Email address"
+          autocomplete="email"
+          required
+        >
+
+        <input
+          id="loginPassword"
+          type="password"
+          placeholder="Password"
+          autocomplete="current-password"
+          required
+        >
+
+        <button type="submit">Log In</button>
+
+      </form>
+
+      <button
+        type="button"
+        class="secondary"
+        id="switchAccount"
+      >
+        Already registered? Log in
+      </button>
+
+    </div>
+
+    <p id="accountMessage" class="message" hidden></p>
+
   </div>
 
+
+  <!-- STUDENT DASHBOARD -->
+  <div class="box" id="dashboard" hidden>
+
+    <h2>Student Dashboard</h2>
+
+    <p>Welcome, <strong id="studentName"></strong>!</p>
+
+    <p>You are logged in successfully.</p>
+
+    <button type="button" id="startButton">
+      Start Examination
+    </button>
+
+    <button type="button" class="secondary" id="viewResultsButton">
+      View My Results
+    </button>
+
+    <div id="previousResults"></div>
+
+    <button type="button" class="secondary" id="logoutButton">
+      Log Out
+    </button>
+
+    <p id="dashboardMessage" class="message" hidden></p>
+
+  </div>
+
+
+  <!-- EXAMINATION -->
   <div class="box" id="exam" hidden>
+
     <h2>Examination</h2>
-    <p>Student: <span id="student"></span></p>
+
+    <p>Student: <span id="examStudent"></span></p>
+
     <p>Time remaining: <span id="timer">05:00</span></p>
 
     <form id="quiz">
 
       <div class="question">
         <p>1. What is 2 + 3?</p>
-        <label><input type="radio" name="q1" value="a"> 4</label>
-        <label><input type="radio" name="q1" value="b"> 5</label>
-        <label><input type="radio" name="q1" value="c"> 6</label>
+
+        <label>
+          <input type="radio" name="q1" value="a">
+          4
+        </label>
+
+        <label>
+          <input type="radio" name="q1" value="b">
+          5
+        </label>
+
+        <label>
+          <input type="radio" name="q1" value="c">
+          6
+        </label>
       </div>
 
       <div class="question">
         <p>2. Which planet do we live on?</p>
-        <label><input type="radio" name="q2" value="a"> Mars</label>
-        <label><input type="radio" name="q2" value="b"> Venus</label>
-        <label><input type="radio" name="q2" value="c"> Earth</label>
+
+        <label>
+          <input type="radio" name="q2" value="a">
+          Mars
+        </label>
+
+        <label>
+          <input type="radio" name="q2" value="b">
+          Venus
+        </label>
+
+        <label>
+          <input type="radio" name="q2" value="c">
+          Earth
+        </label>
       </div>
 
       <div class="question">
         <p>3. Which language structures a web page?</p>
-        <label><input type="radio" name="q3" value="a"> HTML</label>
-        <label><input type="radio" name="q3" value="b"> SQL</label>
-        <label><input type="radio" name="q3" value="c"> Python</label>
+
+        <label>
+          <input type="radio" name="q3" value="a">
+          HTML
+        </label>
+
+        <label>
+          <input type="radio" name="q3" value="b">
+          SQL
+        </label>
+
+        <label>
+          <input type="radio" name="q3" value="c">
+          Python
+        </label>
       </div>
 
-      <button type="submit">Submit Answers</button>
+      <button type="submit" id="submitButton">
+        Submit Answers
+      </button>
+
     </form>
+
+    <p id="examMessage" class="message" hidden></p>
+
   </div>
 
+
+  <!-- EXAMINATION RESULT -->
   <div class="box" id="result" hidden>
+
     <h2>Examination Result</h2>
+
     <p id="score"></p>
-    <button type="button" onclick="restartExam()">
-      Try Demo Again
+
+    <p id="saveMessage" class="message">
+      Saving your result...
+    </p>
+
+    <button type="button" id="returnDashboardButton">
+      Return to Dashboard
     </button>
+
   </div>
+
 
   <script>
-    // Supabase connection
+    // 1. CONNECT TO SUPABASE
+
     const SUPABASE_URL =
       "https://eumsvdwgptxjygmmcggt.supabase.co";
 
@@ -128,50 +295,336 @@
       SUPABASE_PUBLISHABLE_KEY
     );
 
-    // Exam settings
-    let seconds = 300;
+
+    // 2. EXAMINATION SETTINGS
+
+    const EXAM_DURATION = 300;
+
+    const SUBJECT = "General Knowledge";
+
+    const answers = {
+      q1: "b",
+      q2: "c",
+      q3: "a"
+    };
+
+    let currentUser = null;
+    let studentProfile = null;
+
+    let seconds = EXAM_DURATION;
     let countdown = null;
     let submitted = false;
+    let savingResult = false;
 
-    function startExam() {
-      const username =
-        document.getElementById("username").value.trim();
 
-      const password =
-        document.getElementById("password").value;
+    // 3. HELPER FUNCTIONS
 
-      if (!username || !password) {
-        alert("Please enter a username and password.");
-        return;
-      }
+    function showOnly(sectionId) {
+      const sections = [
+        "accountBox",
+        "dashboard",
+        "exam",
+        "result"
+      ];
 
-      document.getElementById("student").textContent = username;
-      document.getElementById("login").hidden = true;
-      document.getElementById("exam").hidden = false;
-
-      seconds = 300;
-      submitted = false;
-      document.getElementById("timer").textContent = "05:00";
-
-      clearInterval(countdown);
-
-      countdown = setInterval(function() {
-        seconds--;
-
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-
-        document.getElementById("timer").textContent =
-          String(mins).padStart(2, "0") + ":" +
-          String(secs).padStart(2, "0");
-
-        if (seconds <= 0) {
-          submitExam();
-        }
-      }, 1000);
+      sections.forEach(function(id) {
+        document.getElementById(id).hidden =
+          id !== sectionId;
+      });
     }
 
-    function submitExam() {
+    function showMessage(elementId, message) {
+      const element = document.getElementById(elementId);
+
+      element.textContent = message;
+      element.hidden = false;
+    }
+
+    function clearMessage(elementId) {
+      const element = document.getElementById(elementId);
+
+      element.textContent = "";
+      element.hidden = true;
+    }
+
+    function friendlyError(error) {
+      return error && error.message
+        ? error.message
+        : "Something went wrong. Please try again.";
+    }
+
+
+    // 4. SWITCH BETWEEN REGISTRATION AND LOGIN
+
+    let registrationMode = true;
+
+    document.getElementById("switchAccount").addEventListener(
+      "click",
+      function() {
+        registrationMode = !registrationMode;
+
+        document.getElementById("registerForm").hidden =
+          !registrationMode;
+
+        document.getElementById("loginForm").hidden =
+          registrationMode;
+
+        document.getElementById("accountTitle").textContent =
+          registrationMode
+            ? "Student Registration"
+            : "Student Login";
+
+        this.textContent = registrationMode
+          ? "Already registered? Log in"
+          : "New student? Create an account";
+
+        clearMessage("accountMessage");
+      }
+    );
+
+
+    // 5. REGISTER A NEW STUDENT
+
+    document.getElementById("registerForm").addEventListener(
+      "submit",
+      async function(event) {
+        event.preventDefault();
+
+        const fullName =
+          document.getElementById("fullName").value.trim();
+
+        const email =
+          document.getElementById("registerEmail")
+            .value.trim();
+
+        const password =
+          document.getElementById("registerPassword").value;
+
+        if (!fullName || !email || password.length < 6) {
+          showMessage(
+            "accountMessage",
+            "Enter your full name, a valid email, and a password of at least 6 characters."
+          );
+          return;
+        }
+
+        const button = this.querySelector("button[type='submit']");
+
+        button.disabled = true;
+        button.textContent = "Registering...";
+
+        try {
+          const { data, error } =
+            await examDatabase.auth.signUp({
+              email: email,
+              password: password,
+              options: {
+                data: {
+                  full_name: fullName
+                }
+              }
+            });
+
+          if (error) {
+            throw error;
+          }
+
+          if (data.session && data.user) {
+            currentUser = data.user;
+
+            const profile = await loadStudentProfile();
+
+            if (!profile) {
+              await examDatabase.auth.signOut();
+
+              currentUser = null;
+
+              showMessage(
+                "accountMessage",
+                "Your account was created, but your student profile could not be loaded. Please contact the administrator."
+              );
+
+              return;
+            }
+
+            showDashboard();
+
+            showMessage(
+              "dashboardMessage",
+              "Registration successful! Welcome to the examination system."
+            );
+
+          } else {
+            showMessage(
+              "accountMessage",
+              "Registration received! Check your email for a confirmation link. After confirming your email, return here and log in."
+            );
+          }
+
+        } catch (error) {
+          showMessage(
+            "accountMessage",
+            "Registration failed: " + friendlyError(error)
+          );
+
+        } finally {
+          button.disabled = false;
+          button.textContent = "Register";
+        }
+      }
+    );
+
+
+    // 6. LOG IN AN EXISTING STUDENT
+
+    document.getElementById("loginForm").addEventListener(
+      "submit",
+      async function(event) {
+        event.preventDefault();
+
+        const email =
+          document.getElementById("loginEmail").value.trim();
+
+        const password =
+          document.getElementById("loginPassword").value;
+
+        const button = this.querySelector("button[type='submit']");
+
+        button.disabled = true;
+        button.textContent = "Logging in...";
+
+        try {
+          const { data, error } =
+            await examDatabase.auth.signInWithPassword({
+              email: email,
+              password: password
+            });
+
+          if (error) {
+            throw error;
+          }
+
+          currentUser = data.user;
+
+          const profile = await loadStudentProfile();
+
+          if (!profile) {
+            await examDatabase.auth.signOut();
+
+            currentUser = null;
+
+            showMessage(
+              "accountMessage",
+              "Your account exists, but the student profile could not be found. Check the students table and its registration trigger."
+            );
+
+            return;
+          }
+
+          showDashboard();
+
+        } catch (error) {
+          showMessage(
+            "accountMessage",
+            "Login failed: " + friendlyError(error)
+          );
+
+        } finally {
+          button.disabled = false;
+          button.textContent = "Log In";
+        }
+      }
+    );
+
+
+    // 7. LOAD THE STUDENT PROFILE FROM THE DATABASE
+
+    async function loadStudentProfile() {
+      if (!currentUser) {
+        return null;
+      }
+
+      const { data, error } = await examDatabase
+        .from("students")
+        .select("id, full_name, email")
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      studentProfile = data;
+
+      return studentProfile;
+    }
+
+
+    // 8. SHOW THE STUDENT DASHBOARD
+
+    function showDashboard() {
+      showOnly("dashboard");
+
+      document.getElementById("studentName").textContent =
+        studentProfile.full_name || studentProfile.email;
+
+      clearMessage("dashboardMessage");
+
+      document.getElementById("previousResults").replaceChildren();
+    }
+
+
+    // 9. START THE EXAMINATION
+
+    document.getElementById("startButton").addEventListener(
+      "click",
+      function() {
+        if (!currentUser || !studentProfile) {
+          showMessage(
+            "dashboardMessage",
+            "Please log in again before starting an examination."
+          );
+          return;
+        }
+
+        document.getElementById("examStudent").textContent =
+          studentProfile.full_name || studentProfile.email;
+
+        document.getElementById("quiz").reset();
+
+        clearMessage("examMessage");
+
+        seconds = EXAM_DURATION;
+        submitted = false;
+        savingResult = false;
+
+        document.getElementById("timer").textContent = "05:00";
+
+        showOnly("exam");
+
+        clearInterval(countdown);
+
+        countdown = setInterval(function() {
+          seconds--;
+
+          const mins = Math.floor(Math.max(seconds, 0) / 60);
+          const secs = Math.max(seconds, 0) % 60;
+
+          document.getElementById("timer").textContent =
+            String(mins).padStart(2, "0") + ":" +
+            String(secs).padStart(2, "0");
+
+          if (seconds <= 0) {
+            submitExam();
+          }
+        }, 1000);
+      }
+    );
+
+
+    // 10. MARK THE EXAM AND SAVE THE RESULT
+
+    async function submitExam() {
       if (
         submitted ||
         document.getElementById("exam").hidden
@@ -182,11 +635,7 @@
       submitted = true;
       clearInterval(countdown);
 
-      const answers = {
-        q1: "b",
-        q2: "c",
-        q3: "a"
-      };
+      document.getElementById("submitButton").disabled = true;
 
       let score = 0;
 
@@ -200,13 +649,65 @@
         }
       }
 
-      document.getElementById("exam").hidden = true;
-      document.getElementById("result").hidden = false;
+      showOnly("result");
 
       document.getElementById("score").textContent =
-        document.getElementById("student").textContent +
-        ", your score is " + score + " out of 3.";
+        (studentProfile.full_name || studentProfile.email) +
+        ", your score is " + score +
+        " out of " + Object.keys(answers).length + ".";
+
+      showMessage("saveMessage", "Saving your result...");
+
+      savingResult = true;
+
+      try {
+        // Confirm the current login is still valid.
+        const { data: sessionData, error: sessionError } =
+          await examDatabase.auth.getUser();
+
+        if (sessionError) {
+          throw sessionError;
+        }
+
+        if (!sessionData.user || !studentProfile) {
+          throw new Error(
+            "Your login session or student profile is missing. Please log in again."
+          );
+        }
+
+        // Save using the student_id column in exam_results.
+        const { error: saveError } = await examDatabase
+          .from("exam_results")
+          .insert({
+            student_id: String(studentProfile.id),
+            subject: SUBJECT,
+            score: score,
+            total_questions: Object.keys(answers).length
+          });
+
+        if (saveError) {
+          throw saveError;
+        }
+
+        showMessage(
+          "saveMessage",
+          "Success! Your examination result has been saved."
+        );
+
+      } catch (error) {
+        showMessage(
+          "saveMessage",
+          "Your score was calculated, but saving failed: " +
+          friendlyError(error) +
+          " Please tell your administrator."
+        );
+
+      } finally {
+        savingResult = false;
+        document.getElementById("submitButton").disabled = false;
+      }
     }
+
 
     document.getElementById("quiz").addEventListener(
       "submit",
@@ -216,21 +717,157 @@
       }
     );
 
-    function restartExam() {
-      clearInterval(countdown);
 
-      seconds = 300;
-      submitted = false;
+    // 11. VIEW PREVIOUS RESULTS
 
-      document.getElementById("quiz").reset();
-      document.getElementById("username").value = "";
-      document.getElementById("password").value = "";
-      document.getElementById("timer").textContent = "05:00";
+    document.getElementById("viewResultsButton").addEventListener(
+      "click",
+      async function() {
+        const container =
+          document.getElementById("previousResults");
 
-      document.getElementById("result").hidden = true;
-      document.getElementById("exam").hidden = true;
-      document.getElementById("login").hidden = false;
-   }
+        container.replaceChildren();
+
+        showMessage(
+          "dashboardMessage",
+          "Loading your results..."
+        );
+
+        try {
+          const { data, error } = await examDatabase
+            .from("exam_results")
+            .select("subject, score, total_questions")
+            .eq("student_id", String(studentProfile.id));
+
+          if (error) {
+            throw error;
+          }
+
+          clearMessage("dashboardMessage");
+
+          const heading = document.createElement("h3");
+          heading.textContent = "My Examination Results";
+          container.appendChild(heading);
+
+          if (!data || data.length === 0) {
+            const message = document.createElement("p");
+            message.textContent = "You have no saved results yet.";
+            container.appendChild(message);
+            return;
+          }
+
+          data.forEach(function(item) {
+            const row = document.createElement("p");
+
+            row.textContent =
+              item.subject + ": " +
+              item.score + " out of " +
+              item.total_questions;
+
+            container.appendChild(row);
+          });
+
+        } catch (error) {
+          showMessage(
+            "dashboardMessage",
+            "Could not load results: " + friendlyError(error)
+          );
+        }
+      }
+    );
+
+
+    // 12. LOG OUT
+
+    document.getElementById("logoutButton").addEventListener(
+      "click",
+      async function() {
+        const { error } = await examDatabase.auth.signOut();
+
+        if (error) {
+          showMessage(
+            "dashboardMessage",
+            "Logout failed: " + friendlyError(error)
+          );
+          return;
+        }
+
+        clearInterval(countdown);
+
+        currentUser = null;
+        studentProfile = null;
+
+        registrationMode = false;
+
+        document.getElementById("registerForm").hidden = true;
+        document.getElementById("loginForm").hidden = false;
+
+        document.getElementById("accountTitle").textContent =
+          "Student Login";
+
+        document.getElementById("switchAccount").textContent =
+          "New student? Create an account";
+
+        document.getElementById("loginForm").reset();
+
+        showOnly("accountBox");
+
+        showMessage(
+          "accountMessage",
+          "You have logged out successfully."
+        );
+      }
+    );
+
+
+    // 13. RETURN TO DASHBOARD AFTER THE EXAM
+
+    document.getElementById("returnDashboardButton").addEventListener(
+      "click",
+      function() {
+        if (currentUser && studentProfile) {
+          showDashboard();
+        }
+      }
+    );
+
+
+    // 14. RESTORE AN EXISTING LOGIN WHEN THE PAGE OPENS
+
+    async function restoreLogin() {
+      try {
+        const { data, error } =
+          await examDatabase.auth.getSession();
+
+        if (error) {
+          throw error;
+        }
+
+        if (data.session && data.session.user) {
+          currentUser = data.session.user;
+
+          const profile = await loadStudentProfile();
+
+          if (profile) {
+            showDashboard();
+            return;
+          }
+        }
+
+        showOnly("accountBox");
+
+      } catch (error) {
+        showOnly("accountBox");
+
+        showMessage(
+          "accountMessage",
+          "Could not restore your login: " + friendlyError(error)
+        );
+      }
+    }
+
+    restoreLogin();
+
   </script>
 
 </body>
